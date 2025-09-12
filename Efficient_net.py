@@ -2,25 +2,19 @@ import os
 import random
 from pathlib import Path
 from collections import Counter
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tifffile as tiff
-
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torchvision import transforms
 from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
-
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import classification_report, f1_score, matthews_corrcoef
-
 import optuna
 
-# --------------------
-# Config
-# --------------------
+
 device = torch.device("mps" if torch.backends.mps.is_available()
                       else ("cuda" if torch.cuda.is_available() else "cpu"))
 print(f"Using device: {device}")
@@ -38,9 +32,7 @@ def set_seed(seed: int):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-# --------------------
-# Dataset
-# --------------------
+
 class TiffDataset(Dataset):
     def __init__(self, image_paths, labels, transform=None):
         self.image_paths = image_paths
@@ -54,7 +46,6 @@ class TiffDataset(Dataset):
         img_path = self.image_paths[idx]
         image = tiff.imread(img_path).astype(np.float32)
 
-        # Expect 2D or 3D with a single channel; reduce to 2D tensor
         if image.ndim == 3:
             if 1 in image.shape:
                 image = image.squeeze()
@@ -69,9 +60,7 @@ class TiffDataset(Dataset):
         label = torch.tensor(self.labels[idx], dtype=torch.long)
         return image, label
 
-# --------------------
-# Preprocessing helpers
-# --------------------
+
 def calc_dataset_mean_std(paths, sample_size=2000):
     sample = random.sample(paths, min(sample_size, len(paths)))
     means, stds = [], []
@@ -94,9 +83,6 @@ def calc_dataset_mean_std(paths, sample_size=2000):
     mean_val, std_val = float(np.mean(means)), float(np.mean(stds))
     return mean_val, max(std_val, 1e-9)
 
-# --------------------
-# Model
-# --------------------
 def get_efficientnet_b0(num_classes=NUM_CLASSES, dropout_p1=0.4, dropout_p2=0.6):
     weights = EfficientNet_B0_Weights.DEFAULT
     model = efficientnet_b0(weights=weights)
@@ -114,9 +100,7 @@ def get_efficientnet_b0(num_classes=NUM_CLASSES, dropout_p1=0.4, dropout_p2=0.6)
     )
     return model
 
-# --------------------
-# Training (one fold)
-# --------------------
+
 def train_fold(model, train_loader, val_loader, epochs, patience, criterion, optimizer, scheduler, fold_num, output_dir, class_names):
     best_val_loss = float('inf')
     patience_ctr = 0
@@ -196,9 +180,9 @@ def train_fold(model, train_loader, val_loader, epochs, patience, criterion, opt
 
     return model, best_metrics
 
-# --------------------
+
 # Cross-validation
-# --------------------
+
 def run_cross_validation(paths, labels, n_splits, epochs, class_names, params, output_dir):
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=SEEDS[0])
     fold_summaries = []
@@ -255,9 +239,8 @@ def run_cross_validation(paths, labels, n_splits, epochs, class_names, params, o
 
     return fold_summaries
 
-# --------------------
+
 # Evaluation on test set
-# --------------------
 def evaluate_single_model_on_test_set(model, test_paths, test_labels, class_names, train_val_paths):
     mean_val, std_val = calc_dataset_mean_std(train_val_paths)
     test_transform = transforms.Compose([
@@ -327,9 +310,8 @@ def evaluate_ensemble_on_test_set(models, test_paths, test_labels, class_names, 
 
     return {"accuracy": acc, "f1": f1, "mcc": mcc}
 
-# --------------------
-# Optuna objective (quick split inside)
-# --------------------
+
+# Optuna objective 
 def objective(trial, train_paths, train_labels):
     params = {
         "lr": trial.suggest_float("lr", 2e-4, 1.5e-3, log=True),
@@ -390,9 +372,8 @@ def objective(trial, train_paths, train_labels):
 
     return matthews_corrcoef(gts, preds) if len(np.unique(gts)) >= 2 else 0.0
 
-# --------------------
+
 # Main
-# --------------------
 if __name__ == "__main__":
     base_data_path = Path("C:/Users/ExtreMedSyncRGB/Documents/Leonor")
     cell_dirs = [base_data_path / "MIP control", base_data_path / "MIP IC50"]
@@ -448,7 +429,7 @@ if __name__ == "__main__":
         print(f"F1 : {np.mean(f1s):.2f} ± {np.std(f1s):.2f}%")
         print(f"MCC: {np.mean(mccs):.3f} ± {np.std(mccs):.3f}")
 
-        # Step 3: Single best fold -> test
+        # Step 3: Single best fold 
         best_fold_idx = int(np.argmax(accs)) + 1
         best_path = os.path.join(output_dir, f"best_model_fold_{best_fold_idx}.pth")
         print(f"\n==> Single-model test (best fold: {best_fold_idx})")
@@ -461,7 +442,7 @@ if __name__ == "__main__":
             sm = {"accuracy": np.nan, "f1": np.nan, "mcc": np.nan}
         all_runs_single.append(sm)
 
-        # Step 4: Ensemble (all folds) -> test
+        
         print("\n==> Ensemble test (avg of fold models)")
         ensemble_models = []
         for f in range(1, N_SPLITS + 1):
