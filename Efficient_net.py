@@ -339,7 +339,7 @@ def objective(trial, train_paths, train_labels):
         transforms.Resize((IMG_SIZE, IMG_SIZE), antialias=True),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomRotation(degrees=20),  # <-- added rotation for Optuna
+        transforms.RandomRotation(degrees=20),  
         transforms.Normalize([mean_val], [std_val]),
     ])
     val_transform = transforms.Compose([
@@ -417,21 +417,21 @@ if __name__ == "__main__":
         output_dir = f"run_{i}_seed{seed}"
         os.makedirs(output_dir, exist_ok=True)
 
-        # Step 1: Optuna
+       
         print("\n==> Hyperparameter search (Optuna)")
         study = optuna.create_study(direction="maximize", sampler=optuna.samplers.TPESampler(seed=seed))
         study.optimize(lambda trial: objective(trial, train_val_paths, train_val_labels), n_trials=N_TRIALS)
         best_params = study.best_params
         print(f"Best params: {best_params}")
 
-        # Step 2: Cross-validation
+      
         print("\n==> K-fold cross-validation")
         fold_summaries = run_cross_validation(
             train_val_paths, train_val_labels, n_splits=N_SPLITS, epochs=TOTAL_EPOCHS_FOR_CV,
             class_names=class_names, params=best_params, output_dir=output_dir
         )
 
-        # Fold stats
+       
         accs = [f["best_val_acc"] for f in fold_summaries]
         f1s = [f["best_val_f1"] for f in fold_summaries]
         mccs = [f["best_val_mcc"] for f in fold_summaries]
@@ -440,7 +440,7 @@ if __name__ == "__main__":
         print(f"F1 : {np.mean(f1s):.2f} ± {np.std(f1s):.2f}%")
         print(f"MCC: {np.mean(mccs):.3f} ± {np.std(mccs):.3f}")
 
-        # Step 3: Single best fold -> test
+       
         best_fold_idx = int(np.argmax(accs)) + 1
         best_path = os.path.join(output_dir, f"best_model_fold_{best_fold_idx}.pth")
         print(f"\n==> Single-model test (best fold: {best_fold_idx})")
@@ -453,7 +453,7 @@ if __name__ == "__main__":
             sm = {"accuracy": np.nan, "f1": np.nan, "mcc": np.nan}
         all_runs_single.append(sm)
 
-        # Step 4: Ensemble (all folds) -> test
+       
         print("\n==> Ensemble test (avg of fold models)")
         ensemble_models = []
         for f in range(1, N_SPLITS + 1):
@@ -469,7 +469,7 @@ if __name__ == "__main__":
             ens = {"accuracy": np.nan, "f1": np.nan, "mcc": np.nan}
         all_runs_ensemble.append(ens)
 
-    # Final summary across runs
+   
     def _summ(metric_list, key):
         vals = [m[key] for m in metric_list if not np.isnan(m[key])]
         return (np.mean(vals), np.std(vals)) if vals else (float("nan"), float("nan"))
@@ -482,7 +482,7 @@ if __name__ == "__main__":
     en_f1_mean, en_f1_std = _summ(all_runs_ensemble, "f1")
     en_mcc_mean, en_mcc_std = _summ(all_runs_ensemble, "mcc")
 
-    print("\n================ FINAL SUMMARY (across seeds) ================")
+    print("\n FINAL SUMMARY (across seeds) ")
     print(f"Single model -> Acc: {sm_acc_mean:.2f} ± {sm_acc_std:.2f}% | "
           f"F1: {sm_f1_mean:.2f} ± {sm_f1_std:.2f}% | MCC: {sm_mcc_mean:.3f} ± {sm_mcc_std:.3f}")
     print(f"Ensemble     -> Acc: {en_acc_mean:.2f} ± {en_acc_std:.2f}% | "
