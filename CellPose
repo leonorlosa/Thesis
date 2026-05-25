@@ -12,9 +12,9 @@ import tifffile as tiff
 
 
 image_folder = "segmentation/IC50 segmentation" 
-diameter = 150 #antes tinha 80
+diameter = 150 
 model_type = 'cyto2'
-channels = [0, 0] # Assuming grayscale images
+channels = [0, 0] 
 force_cpu = False
 use_gaussian_blur = True
 blur_sigma = 1.8
@@ -68,7 +68,7 @@ def interactive_segmentation_review_with_buttons(img, masks, image_name):
 
     
     fig = plt.figure(figsize=(15, 8))
-    plot_ax = fig.add_axes([0.05, 0.20, 0.9, 0.75]) # Adjust bottom margin for buttons
+    plot_ax = fig.add_axes([0.05, 0.20, 0.9, 0.75]) 
     button_ax_delete = fig.add_axes([0.3, 0.05, 0.15, 0.07])
     button_ax_merge = fig.add_axes([0.55, 0.05, 0.15, 0.07])
 
@@ -87,12 +87,12 @@ def interactive_segmentation_review_with_buttons(img, masks, image_name):
 
     
     def update_selection_highlights():
-        nonlocal selection_highlight_collections # Reference the list storing highlight PathCollections
+        nonlocal selection_highlight_collections 
 
        
         for collection in selection_highlight_collections:
             collection.remove()
-        selection_highlight_collections = [] # Reset the list for the new highlights
+        selection_highlight_collections = [] 
 
        
         temp_collections = [] # Temporary list to gather new collections
@@ -119,7 +119,7 @@ def interactive_segmentation_review_with_buttons(img, masks, image_name):
 
    
     def update_main_plot():
-        nonlocal outline_contour_set # Reference the variable holding the main QuadContourSet
+        nonlocal outline_contour_set 
 
         if outline_contour_set and hasattr(outline_contour_set, 'collections'):
             for collection in outline_contour_set.collections:
@@ -188,7 +188,7 @@ def interactive_segmentation_review_with_buttons(img, masks, image_name):
                     deleted_count += 1
 
         print(f"--- {deleted_count} selected masks deleted. ---")
-        # Clear selection state AFTER processing
+     
         selected_cell_ids = []
         update_selection_highlights() # Remove highlights
         update_main_plot() # Update the main plot to show changes
@@ -220,7 +220,7 @@ def interactive_segmentation_review_with_buttons(img, masks, image_name):
             print(f"--- Warning: Mask for source ID {source_id} not found (might have been deleted?). Merge aborted for this ID pair. ---")
 
 
-        # Clear selection state AFTER processing
+       
         selected_cell_ids = []
         update_selection_highlights() # Remove highlights
         update_main_plot() # Update the main plot to show changes
@@ -247,18 +247,18 @@ def interactive_segmentation_review_with_buttons(img, masks, image_name):
 
     plt.show(block=True) # Halts execution until the figure window is closed
 
-    # After the window is closed, disconnect the event handler
+   
     fig.canvas.mpl_disconnect(cid)
     plt.close(fig) # Explicitly close the figure
 
-    # Re-number masks sequentially from 1 after edits to avoid large gaps in IDs
+
     unique_ids = np.unique(editable_masks)
     unique_ids = unique_ids[unique_ids > 0] # Exclude background
     final_masks = np.zeros_like(editable_masks)
     for i, old_id in enumerate(unique_ids):
-        final_masks[editable_masks == old_id] = i + 1 # New IDs start from 1
+        final_masks[editable_masks == old_id] = i + 1 
 
-    # Return the modified and re-numbered masks
+   
     return final_masks
 
 
@@ -299,7 +299,7 @@ for image_name in image_files:
 
     try:
         img = iio.imread(image_path)
-        # --- Robust 2D Grayscale Conversion ---
+     
         print(f"--- Original image shape: {img.shape}")
         if img.ndim == 2:
             pass # Already 2D
@@ -317,7 +317,7 @@ for image_name in image_files:
                 else: # (3, H, W) or (4, H, W) -> Grayscale (H, W)
                     print("--- Converting color image to grayscale (averaging RGB).")
                     img = np.mean(img[:3, ...], axis=0)
-            else: # Could be Z-stack, time series etc. Take first slice.
+            else: 
                  print(f"--- Warning: 3D image of shape {img.shape} is not standard C,H,W or H,W,C. Taking first slice (index 0).")
                  img = img[0, :, :]
         elif img.ndim > 3:
@@ -429,7 +429,7 @@ for image_name in image_files:
                 if np.nanmax(img_for_plot) <= 1.0 and np.nanmin(img_for_plot) >= 0.0:
                      img_for_plot = (img_for_plot * 255).astype(np.uint8)
 
-                # Ensure it's 3-channel for plot.mask_overlay
+             
                 if img_for_plot.ndim == 2:
                     img_rgb = np.stack((img_for_plot,)*3, axis=-1)
                 else: # Should already be uint8 grayscale here, make it RGB
